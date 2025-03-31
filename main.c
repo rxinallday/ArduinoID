@@ -13,7 +13,7 @@
 #define DEVICE_DATA_START 0
 #define WIFI_DATA_START (DEVICE_DATA_START + sizeof(DeviceData))
 
-#define SERVER_URL "http://example.com/api/device"
+#define SERVER_URL "http://ex_api.com/api/device"
 #define HTTP_TIMEOUT 10000
 
 #define WEB_SERVER_PORT 80
