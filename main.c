@@ -9,12 +9,11 @@
 #include <ESP8266WebServer.h>
 #include <time.h>
 
-#define EEPROM_SIZE 512
-#define DEVICE_DATA_START 0
-#define WIFI_DATA_START (DEVICE_DATA_START + sizeof(DeviceData))
+#define EEPROM_SIZE 128  // Оптимизировано (было 512)
+#define WIFI_DATA_START 0
 
 #define SERVER_URL "http://192.168.1.100/api/device"
-#define HTTP_TIMEOUT 10000
+#define HTTP_TIMEOUT 5000  // Уменьшено с 10 сек до 5 сек
 #define WEB_SERVER_PORT 80
 
 #define AP_SSID "USB-Device"
@@ -30,6 +29,21 @@ WifiData wifi_data;
 ESP8266WebServer webServer(WEB_SERVER_PORT);
 bool ap_mode = false;
 
+// HTML сохранен в PROGMEM (Flash, экономит RAM)
+const char login_page[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head><title>Login</title></head>
+<body>
+<h1>Device Authorization</h1>
+<form action='/login' method='post'>
+Login: <input type='text' name='login'><br>
+Password: <input type='password' name='password'><br>
+<input type='submit' value='Authorize'>
+</form>
+</body>
+</html>)rawliteral";
+
 void save_wifi_data() {
     EEPROM.put(WIFI_DATA_START, wifi_data);
     EEPROM.commit();
@@ -43,18 +57,11 @@ bool load_wifi_data() {
 void setup_ap_mode() {
     WiFi.softAP(AP_SSID, AP_PASSWORD);
     ap_mode = true;
-    Serial.println("AP Mode Active");
+    Serial.println(F("AP Mode Active"));
 }
 
 void handle_root() {
-    String html = "<!DOCTYPE html><html><head><title>Login</title></head><body>"
-        "<h1>Device Authorization</h1>"
-        "<form action='/login' method='post'>"
-        "Login: <input type='text' name='login'><br>"
-        "Password: <input type='password' name='password'><br>"
-        "<input type='submit' value='Authorize'>"
-        "</form></body></html>";
-    webServer.send(200, "text/html", html);
+    webServer.send(200, "text/html", FPSTR(login_page));
 }
 
 void handle_login() {
@@ -63,7 +70,7 @@ void handle_login() {
 
     WiFiClient client;
     HTTPClient http;
-    DynamicJsonDocument doc(512);
+    DynamicJsonDocument doc(256);  // Уменьшено с 512 до 256 байт
     doc["login"] = login;
     doc["password"] = password;
     String json_data;
@@ -76,7 +83,7 @@ void handle_login() {
 
     if (http_code == HTTP_CODE_OK) {
         String payload = http.getString();
-        DynamicJsonDocument response_doc(512);
+        DynamicJsonDocument response_doc(256);
         deserializeJson(response_doc, payload);
 
         strlcpy(wifi_data.ssid, response_doc["ssid"], sizeof(wifi_data.ssid));
@@ -84,12 +91,14 @@ void handle_login() {
         save_wifi_data();
 
         http.end();
+        json_data = "";  // Освобождаем RAM
         webServer.send(200, "text/plain", "Success! Rebooting...");
-        delay(2000);
+        delay(1000);
         ESP.restart();
     }
     else {
         http.end();
+        json_data = "";
         webServer.send(403, "text/plain", "Authorization Failed");
         Serial.printf("HTTP Error: %d\n", http_code);
     }
@@ -106,7 +115,7 @@ void setup() {
         WiFi.begin(wifi_data.ssid, wifi_data.password);
 
         unsigned long startTime = millis();
-        while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
+        while (WiFi.status() != WL_CONNECTED && millis() - startTime < 5000) {
             delay(500);
         }
 
