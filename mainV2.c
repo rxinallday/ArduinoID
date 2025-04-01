@@ -114,11 +114,12 @@ void update_display() {
     char timer_str[13];
     snprintf(timer_str, sizeof(timer_str), "%012lu", device_data.timer);
 
-    u8g2.clearBuffer();
+    u8g2.clearBuffer();  // Очистка экрана перед рисованием
     u8g2.setFont(u8g2_font_5x7_tf);
-    u8g2.drawStr(0, 8, device_data.display_text);
-    u8g2.drawStr(0, 16, timer_str);
-    u8g2.drawStr(0, 24, device_data.status);
+    u8g2.drawStr(0, 8, "Initializing...");
+    u8g2.drawStr(0, 16, "USB Token Device");
+    u8g2.drawStr(0, 24, mac_address);
+    u8g2.sendBuffer();  // Отправка на экран
 
     if (check_wifi_connection()) {
         u8g2.drawStr(0, 32, "WiFi: Connected");
@@ -159,7 +160,7 @@ bool connect_to_wifi() {
 }
 
 void setup_ap_mode() {
-    String ap_name = String("USB-") + String(mac_address).substring(12);
+    String ap_name = String("USB-") + mac_address;  // Вместо substring(12)
     WiFi.softAP(ap_name.c_str(), AP_PASSWORD);
     ap_mode = true;
     Serial.println(F("AP Mode Active: ") + ap_name);
