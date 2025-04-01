@@ -1,4 +1,4 @@
-#include <ESP8266WiFi.h>
+﻿#include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
 #include <WiFiClient.h>
@@ -128,7 +128,7 @@ void update_display() {
 
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_5x7_tf); // Smaller font to fit on 0.91" display
-    
+
     // For OLED 0.91" (128x32), we have less vertical space
     u8g2.drawStr(0, 8, device_data.display_text);
     u8g2.drawStr(0, 16, timer_str);
@@ -137,9 +137,11 @@ void update_display() {
     // WiFi status on the last line
     if (check_wifi_connection()) {
         u8g2.drawStr(0, 32, "WiFi: Connected");
-    } else if (ap_mode) {
+    }
+    else if (ap_mode) {
         u8g2.drawStr(0, 32, "WiFi: AP Mode");
-    } else {
+    }
+    else {
         u8g2.drawStr(0, 32, "WiFi: Disconnected");
     }
 
@@ -157,7 +159,7 @@ bool connect_to_wifi() {
     // Update timer during connection
     unsigned long start_time = millis();
     last_timer_update = start_time;
-    
+
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         unsigned long current_time = millis();
@@ -181,7 +183,7 @@ void setup_ap_mode() {
     ap_mode = true;
     Serial.println(F("AP Mode Active: ") + ap_name);
     Serial.println(F("Password: ") + String(AP_PASSWORD));
-    
+
     // Set display to show AP information
     strlcpy(device_data.display_text, ap_name.c_str(), sizeof(device_data.display_text));
     strlcpy(device_data.status, "Connect to configure", sizeof(device_data.status));
@@ -198,7 +200,7 @@ void send_server_request() {
 
     WiFiClient client;
     HTTPClient http;
-    
+
     // Use smaller JSON document to save memory
     StaticJsonDocument<384> doc;
 
@@ -206,13 +208,14 @@ void send_server_request() {
         // Initial request
         doc["start"] = "hello";
         doc["mac"] = mac_address;
-    } else {
+    }
+    else {
         // Regular update
         doc["time"] = device_data.init_timestamp;
         doc["id"] = device_data.user_id;
         doc["token"] = device_data.token;
         doc["connected"] = check_wifi_connection() ? 1 : 0;
-        
+
         // Add WiFi networks
         JsonArray wifiArray = doc.createNestedArray("wifi");
         int n = WiFi.scanNetworks();
@@ -235,74 +238,76 @@ void send_server_request() {
         // Use smaller JSON document to save memory
         StaticJsonDocument<384> response_doc;
         DeserializationError error = deserializeJson(response_doc, payload);
-        
+
         if (!error) {
             // Update device data based on server response
             if (response_doc.containsKey("time")) {
                 device_data.init_timestamp = response_doc["time"].as<time_t>();
             }
-            
+
             if (response_doc.containsKey("id")) {
                 strlcpy(device_data.user_id, response_doc["id"] | "user", sizeof(device_data.user_id));
             }
-            
+
             if (response_doc.containsKey("text")) {
                 strlcpy(device_data.display_text, response_doc["text"] | "Hello", sizeof(device_data.display_text));
             }
-            
+
             if (response_doc.containsKey("status")) {
                 strlcpy(device_data.status, response_doc["status"] | "OK", sizeof(device_data.status));
             }
-            
+
             if (response_doc.containsKey("token")) {
                 strlcpy(device_data.token, response_doc["token"] | "", sizeof(device_data.token));
             }
-            
+
             if (response_doc.containsKey("timer")) {
                 unsigned long new_timer = response_doc["timer"].as<unsigned long>();
                 device_data.timer = new_timer;
                 last_timer_update = millis();
             }
-            
+
             if (response_doc.containsKey("uptime")) {
                 device_data.uptime = response_doc["uptime"].as<uint16_t>();
                 if (device_data.uptime > 3600) device_data.uptime = 3600; // Max 1 hour
                 if (device_data.uptime < 5) device_data.uptime = 5; // Min 5 seconds
             }
-            
+
             // Check for WiFi configuration updates
             if (response_doc.containsKey("wifi") && response_doc.containsKey("password")) {
                 String new_ssid = response_doc["wifi"].as<String>();
                 String new_pass = response_doc["password"].as<String>();
-                
-                if (new_ssid.length() > 0 && 
-                    (strcmp(wifi_data.ssid, new_ssid.c_str()) != 0 || 
-                     strcmp(wifi_data.password, new_pass.c_str()) != 0)) {
-                    
+
+                if (new_ssid.length() > 0 &&
+                    (strcmp(wifi_data.ssid, new_ssid.c_str()) != 0 ||
+                        strcmp(wifi_data.password, new_pass.c_str()) != 0)) {
+
                     strlcpy(wifi_data.ssid, new_ssid.c_str(), sizeof(wifi_data.ssid));
                     strlcpy(wifi_data.password, new_pass.c_str(), sizeof(wifi_data.password));
                     save_wifi_data();
-                    
+
                     // Reconnect if WiFi settings changed
                     WiFi.disconnect();
                     delay(500);
                     connect_to_wifi();
                 }
             }
-            
+
             if (!device_data.initialized) {
                 device_data.initialized = 1;
             }
-            
+
             save_device_data();
-        } else {
+        }
+        else {
             strlcpy(device_data.status, "JSON Error", sizeof(device_data.status));
         }
-    } else {
+    }
+    else {
         strlcpy(device_data.status, "HTTP Error", sizeof(device_data.status));
         Serial.printf("HTTP Error: %d\n", http_code);
     }
-    
+
     http.end();
     update_display();
 }
@@ -340,7 +345,7 @@ void handle_login() {
         String payload = http.getString();
         StaticJsonDocument<384> response_doc;
         DeserializationError error = deserializeJson(response_doc, payload);
-        
+
         if (!error) {
             device_data.init_timestamp = response_doc["time"].as<time_t>();
             strlcpy(device_data.user_id, response_doc["id"] | "unknown", sizeof(device_data.user_id));
@@ -353,14 +358,16 @@ void handle_login() {
 
             save_device_data();
             http.end();
-            
+
             webServer.sendHeader("Location", "/");
             webServer.send(303);
-        } else {
+        }
+        else {
             http.end();
             webServer.send(400, "text/plain", "JSON Parse Error");
         }
-    } else {
+    }
+    else {
         http.end();
         webServer.send(403, "text/plain", "Authorization Failed");
         Serial.printf("HTTP Error: %d\n", http_code);
@@ -382,11 +389,11 @@ void handle_configure() {
     strlcpy(wifi_data.password, password.c_str(), sizeof(wifi_data.password));
 
     save_wifi_data();
-    
+
     // Try to connect with new settings
     WiFi.disconnect();
     delay(500);
-    
+
     if (connect_to_wifi()) {
         // If connected, try to get time from NTP
         configTime(0, 0, "pool.ntp.org");
@@ -400,10 +407,10 @@ void setup() {
     Serial.begin(115200);
     Wire.begin();  // Initialize I2C
     EEPROM.begin(EEPROM_SIZE);
-    
+
     // Get MAC address early for device identification
     get_mac_address();
-    
+
     // Initialize display with correct settings for 0.91" OLED
     u8g2.begin();
     u8g2.clearBuffer();
@@ -415,54 +422,56 @@ void setup() {
 
     // Set initial timer update time
     last_timer_update = millis();
-    
+
     // Try to load device data from EEPROM
     bool device_initialized = load_device_data();
     bool wifi_available = load_wifi_data();
-    
+
     // Setup WiFi based on available configuration
     WiFi.mode(WIFI_STA);
-    
+
     if (wifi_available) {
         if (!connect_to_wifi()) {
             // If can't connect, start AP mode
             setup_ap_mode();
-        } else if (!device_initialized) {
+        }
+        else if (!device_initialized) {
             // Connected to WiFi but device not initialized
             // Try to communicate with server
             send_server_request();
         }
-    } else if (!device_initialized) {
+    }
+    else if (!device_initialized) {
         // No WiFi configured and device not initialized
         setup_ap_mode();
     }
-    
+
     // Setup web server
     webServer.on("/", HTTP_GET, handle_root);
     webServer.on("/init", HTTP_GET, handle_init);
     webServer.on("/configure", HTTP_POST, handle_configure);
     webServer.on("/login", HTTP_POST, handle_login);
     webServer.begin();
-    
+
     Serial.println(F("Setup complete"));
 }
 
 void loop() {
     // Handle web server requests
     webServer.handleClient();
-    
+
     // Get current time for various operations
     unsigned long current_time = millis();
-    
+
     // Update the timer value
     device_data.timer += (current_time - last_timer_update);
     last_timer_update = current_time;
-    
+
     // Update display every second
     if (current_time - last_update_time >= 1000) {
         last_update_time = current_time;
         update_display();
-        
+
         // Check if it's time to communicate with the server based on uptime setting
         static unsigned long last_server_update = 0;
         if (device_data.initialized && (current_time - last_server_update >= (device_data.uptime * 1000UL))) {
@@ -470,13 +479,13 @@ void loop() {
             send_server_request();
         }
     }
-    
+
     // Save device data every minute (reduced from the original 60000ms to save power)
     if (current_time - last_save_time >= 60000) {
         last_save_time = current_time;
         save_device_data();
     }
-    
+
     // Check WiFi connection and reconnect if needed
     static unsigned long last_wifi_check = 0;
     if (current_time - last_wifi_check >= 30000) { // Check every 30 seconds
@@ -485,7 +494,7 @@ void loop() {
             connect_to_wifi();
         }
     }
-    
+
     // Add a small delay to save power
     delay(10);
 }
