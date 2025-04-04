@@ -643,6 +643,9 @@ void sendDataToServer() {
         return;
     }
 
+    WiFiClientSecure client;
+    client.setInsecure();
+
     WiFiClient client;
     HTTPClient http;
 
@@ -820,17 +823,18 @@ String getWiFiSignalStrength() {
     String signalStrength = "";
 
     if (rssi > -50) {
-        signalStrength = "Excellent";
+        signalStrength = "🟩🟩🟩🟩🟩";
     }
     else if (rssi > -60) {
-        signalStrength = "Good";
+        signalStrength = "🟩🟩🟩🟨⬛";
     }
     else if (rssi > -70) {
-        signalStrength = "Fair";
+        signalStrength = "🟩🟩🟨⬛⬛";
     }
     else {
-        signalStrength = "Weak";
+        signalStrength = "🟩🟨⬛⬛⬛";
     }
+
 
     return signalStrength + " (" + String(rssi) + " dBm)";
 }
